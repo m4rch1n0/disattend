@@ -1,0 +1,16 @@
+{
+  "device": "AMD Radeon RX 6900 XT",
+  "torch": "2.11.0+rocm7.2",
+  "model": "facebook/DiT-XL-2-256",
+  "scheduler": "DDIMScheduler",
+  "seed": 42,
+  "class_label": 207,
+  "num_inference_steps": 250,
+  "load_fp32_sec": 15.332,
+  "load_fp16_sec": 0.965,
+  "vram_fp32_gb": 3.134,
+  "vram_fp16_gb": 1.583,
+  "sample_wallclock_sec": 27.985,
+  "vram_peak_sample_fp16_gb": 1.982,
+  "png_path": "notebooks/out/golden_retriever_fp16.png"
+}

@@ -18,6 +18,9 @@ checkpoints/
 # Experiment outputs (versioned selectively, not by default)
 experiments/
 
+# Noisy run logs from scripts/notebooks (PNG + summary.json are versioned)
+notebooks/out/*.log
+
 # OS
 .DS_Store
 Thumbs.db
