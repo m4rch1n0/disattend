@@ -1,0 +1,23 @@
+[project]
+name = "disattend"
+version = "0.1.0"
+description = "Adversarial characterization of attention patterns in Diffusion Transformers vs UNet backbones"
+requires-python = ">=3.12"
+dependencies = [
+    "matplotlib>=3.10.8",
+    "numpy>=2.4.3",
+    "torch>=2.11.0",
+    "torchvision>=0.26.0",
+    "tqdm>=4.67.3",
+    "triton-rocm>=3.6.0",
+]
+
+[[tool.uv.index]]
+name = "pytorch-rocm"
+url = "https://download.pytorch.org/whl/rocm7.2"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-rocm" }]
+torchvision = [{ index = "pytorch-rocm" }]
+triton-rocm = [{ index = "pytorch-rocm" }]

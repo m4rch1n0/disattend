@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+build/
+dist/
+wheels/
+*.egg-info/
+
+# Virtual environments
+.venv/
+
+# Data, checkpoints, HF cache (heavy, not versioned)
+data/
+checkpoints/
+.hf_cache/
+
+# Experiment outputs (versioned selectively, not by default)
+experiments/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Weights & Biases
+wandb/
+
+# ROCm / HIP cache
+__hip_rtc_temp/
+
+# Personal planning docs (not versioned)
+PROJECT_PLAN.md
+docs/phase*_plan.md
+
+# Misc
+*.swp
+*.swo
+*~
+.env
+*.pdf
