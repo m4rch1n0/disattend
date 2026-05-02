@@ -1,0 +1,32 @@
+{
+  "n_samples": 1000,
+  "mean_psnr_db": 24.815,
+  "median_psnr_db": 24.344,
+  "p10_psnr_db": 19.757,
+  "min_psnr_db": 13.897,
+  "max_psnr_db": 49.685,
+  "pass_threshold_db": 24.0,
+  "passed": true,
+  "elapsed_s": 247.4,
+  "vae_repo": "stabilityai/sd-vae-ft-ema",
+  "scaling_factor": 0.18215,
+  "img_size": 256,
+  "decode_sample_labels_from_train_0000": [
+    797,
+    575,
+    333,
+    302,
+    437,
+    719,
+    953,
+    41,
+    756,
+    491,
+    230,
+    739,
+    211,
+    141,
+    189,
+    838
+  ]
+}
