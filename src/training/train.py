@@ -25,9 +25,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import sys
 import time
+import traceback
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -305,7 +307,19 @@ def main() -> int:
 
         update_ema(ema, model, decay=args.ema_decay)
 
-        log_window_loss += loss.item()
+        loss_val = loss.item()
+        if not math.isfinite(loss_val):
+            # GradScaler will skip this step's opt update internally; we just
+            # surface the event so a streak of NaNs is visible in the log.
+            jsonl_append(log_path, {
+                "step": step + 1,
+                "event": "non_finite_loss",
+                "loss": loss_val,
+                "wall_time": time.strftime("%Y-%m-%d %H:%M:%S"),
+            })
+            print(f"WARN step={step+1}: non-finite loss {loss_val} (skipping)")
+            loss_val = 0.0
+        log_window_loss += loss_val
         log_window_steps += 1
         step += 1
 
@@ -335,19 +349,34 @@ def main() -> int:
             print(f"step={step}: running FID eval on EMA "
                   f"(n={args.fid_samples}, n_steps={args.fid_steps_ode})...")
             t_fid = time.perf_counter()
-            fid_metrics = fid_eval.evaluate(ema)
-            fid_elapsed = time.perf_counter() - t_fid
-            print(f"  FID = {fid_metrics['fid']:.3f} "
-                  f"(eval took {fid_elapsed/60:.1f} min)")
-            jsonl_append(log_path, {
-                "step": step,
-                "event": "fid_eval",
-                "fid": round(fid_metrics["fid"], 4),
-                "fid_n_samples": fid_metrics["n_samples"],
-                "fid_n_steps_ode": fid_metrics["n_steps_ode"],
-                "fid_elapsed_s": round(fid_elapsed, 1),
-                "wall_time": time.strftime("%Y-%m-%d %H:%M:%S"),
-            })
+            try:
+                fid_metrics = fid_eval.evaluate(ema)
+                fid_elapsed = time.perf_counter() - t_fid
+                print(f"  FID = {fid_metrics['fid']:.3f} "
+                      f"(eval took {fid_elapsed/60:.1f} min)")
+                jsonl_append(log_path, {
+                    "step": step,
+                    "event": "fid_eval",
+                    "fid": round(fid_metrics["fid"], 4),
+                    "fid_n_samples": fid_metrics["n_samples"],
+                    "fid_n_steps_ode": fid_metrics["n_steps_ode"],
+                    "fid_elapsed_s": round(fid_elapsed, 1),
+                    "wall_time": time.strftime("%Y-%m-%d %H:%M:%S"),
+                })
+            except Exception as e:
+                fid_elapsed = time.perf_counter() - t_fid
+                err = f"{type(e).__name__}: {e}"
+                tb = traceback.format_exc()
+                print(f"  WARN FID eval failed: {err} (continuing training)")
+                print(tb)
+                jsonl_append(log_path, {
+                    "step": step,
+                    "event": "fid_eval_error",
+                    "error": err,
+                    "fid_elapsed_s": round(fid_elapsed, 1),
+                    "wall_time": time.strftime("%Y-%m-%d %H:%M:%S"),
+                })
+                model.train()  # in case evaluate() left it in eval mode after exception
             t_window = time.perf_counter()  # reset to not skew next steps/sec
 
         if step % args.ckpt_every == 0 and step > 0:
