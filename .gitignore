@@ -21,6 +21,9 @@ experiments/
 # Noisy run logs from scripts/notebooks (PNG + summary.json are versioned)
 notebooks/out/*.log
 
+# Papers (locali, non distribuibili, note di lettura personali)
+papers/
+
 # OS
 .DS_Store
 Thumbs.db
@@ -38,6 +41,7 @@ __hip_rtc_temp/
 # Personal planning docs (not versioned)
 PROJECT_PLAN.md
 docs/phase*_plan.md
+papers
 
 # Misc
 *.swp

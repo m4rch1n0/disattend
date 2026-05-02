@@ -71,8 +71,8 @@ disattend/
 
 ## Status
 
-- **Phase 0** — Repository bootstrap and environment setup (April 2026) — in progress.
+- **Phase 0** - Repository bootstrap and environment setup (April 2026) - in progress.
 
 This is an early-stage repository. A sibling project
-([`slowflow`](https://github.com/m4rch1n0/slowflow), private) provides the
+([`slowflow`](https://github.com/m4rch1n0/slowflow)) provides the
 UNet flow-matching baseline that may be referenced in later phases.

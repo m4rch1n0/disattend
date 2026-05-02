@@ -87,7 +87,7 @@ def bench_one(name: str, cfg: dict, shape_cfg: dict, batch: int, dtype: torch.dt
             x, t, y = make_batch()
             opt.zero_grad(set_to_none=True)
             pred = model(x, timestep=t, class_labels=y).sample
-            loss = F.mse_loss(pred, x)  # dummy MSE target — we only care about compute cost
+            loss = F.mse_loss(pred, x)  # dummy MSE target - we only care about compute cost
             loss.backward()
             opt.step()
         torch.cuda.synchronize()
@@ -147,7 +147,7 @@ def main() -> None:
                 )
                 rows.append(row)
 
-    # Extrapolations — assume 400k training steps (standard DiT scale).
+    # Extrapolations - assume 400k training steps (standard DiT scale).
     # For each ok row, compute projected wall-clock hours / days.
     STEPS_IMAGENET = 400_000
     STEPS_CIFAR = 200_000

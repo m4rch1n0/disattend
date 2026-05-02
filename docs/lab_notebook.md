@@ -5,7 +5,7 @@ Update this every working session, even if just a few lines.
 
 ---
 
-## 2026-04-22 — Repository bootstrap, pivot from slowflow
+## 2026-04-22 - Repository bootstrap, pivot from slowflow
 
 New repository `~/disattend` created as sibling of `~/slowflow`. The two
 projects share hardware, stack conventions, and style, but have disjoint
@@ -39,7 +39,7 @@ the comparison, but that decision is deferred to Phase 3.
   triton-rocm). First `uv sync` failed with the same `triton-rocm` index
   resolution error seen on slowflow 2026-04-20; fixed by adding
   `triton-rocm` to the dependency list with the `pytorch-rocm` index
-  hint. Second `uv sync` completed using the existing uv cache — no
+  hint. Second `uv sync` completed using the existing uv cache - no
   significant download.
 - `diffusers`, `transformers`, `accelerate`, `huggingface_hub` are
   intentionally NOT installed. They will be added in Phase 1 when the
