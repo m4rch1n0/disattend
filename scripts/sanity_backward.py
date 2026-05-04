@@ -62,13 +62,15 @@ def euler_step(model, x, t_cur, dt, y):
     return x + dt * v
 
 
-def sample_with_checkpoint(model, z_T, y, n_steps: int, t_min: float = 1e-3,
+def sample_with_checkpoint(model, z_T, y, n_steps: int,
                            use_checkpoint: bool = True):
-    """Euler ODE from t=1 (noise) to t=t_min (data) with optional gradient checkpointing.
+    """Euler ODE from t=0 (noise) to t=1 (data) with optional gradient checkpointing.
 
-    Differentiable wrt z_T: gradients flow back through every step.
+    Convention matches the SiT codebase ICPlan: integrate forward in t
+    from noise (t=0) to data (t=1) with positive dt. Differentiable wrt
+    z_T so gradients flow back through every step.
     """
-    ts = torch.linspace(1.0, t_min, n_steps + 1, device=z_T.device, dtype=z_T.dtype)
+    ts = torch.linspace(0.0, 1.0, n_steps + 1, device=z_T.device, dtype=z_T.dtype)
     x = z_T
     for i in range(n_steps):
         dt = (ts[i + 1] - ts[i]).detach()

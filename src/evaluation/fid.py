@@ -32,20 +32,24 @@ NUM_CLASSES = 1000
 
 
 @torch.inference_mode()
-def euler_ode_sample(model, z_T, y, n_steps: int = 25, t_min: float = 1e-3):
-    """Deterministic Euler ODE from t=1 (noise) to t=t_min (data).
+def euler_ode_sample(model, z_T, y, n_steps: int = 25):
+    """Deterministic Euler ODE from t=0 (noise) to t=1 (data).
 
-    Convention: SiT velocity model with t in [0, 1], v = dx/dt of the linear
-    interpolant. `t_min > 0` avoids the slight instability at exactly t=0.
+    Convention matches the SiT codebase ICPlan: `x_t = t * x_data
+    + (1 - t) * x_noise`, so the data manifold is at t=1 and pure noise
+    is at t=0. Integration is forward in t with positive dt; the model
+    output v_theta(x_t, t, y) is dx/dt of the linear interpolant.
+    train_eps=sample_eps=0 for VELOCITY+LINEAR per
+    transport.create_transport, so no t-clipping is needed.
     """
-    ts = torch.linspace(1.0, t_min, n_steps + 1, device=z_T.device)
-    x = z_T
+    ts = torch.linspace(0.0, 1.0, n_steps + 1, device=z_T.device)
+    x = z_T  # noise at t=0
     for i in range(n_steps):
-        dt = ts[i + 1] - ts[i]  # negative, integrating downward in t
+        dt = ts[i + 1] - ts[i]  # positive
         t_batch = ts[i].expand(x.shape[0])
         v = model(x, t_batch, y)
         x = x + dt * v
-    return x
+    return x  # data at t=1
 
 
 def load_inception(device: torch.device) -> InceptionV3:
