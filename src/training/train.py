@@ -145,6 +145,10 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--resume-from", type=str, default=None)
     ap.add_argument("--smoke", action="store_true",
                     help="smoke override: 100 steps, log every 10, ckpt every 50")
+    ap.add_argument("--compile", action="store_true",
+                    help="wrap the model forward with torch.compile "
+                         "(~1.4x speedup on RDNA 2; optimizer/EMA/ckpt stay "
+                         "on the original module)")
     ap.add_argument("--fid-every", type=int, default=0,
                     help="evaluate FID every N steps on the EMA model (0 = off)")
     ap.add_argument("--fid-samples", type=int, default=5000,
@@ -198,6 +202,14 @@ def main() -> int:
     requires_grad(ema, False)
     update_ema(ema, model, decay=0.0)  # ema := model
     ema.eval()
+
+    # Optional torch.compile: compile only the forward path. The optimizer,
+    # EMA, and checkpointing keep operating on the original `model` (the
+    # compiled wrapper shares the same parameter tensors), so state dicts
+    # stay free of the `_orig_mod.` prefix and resume cleanly.
+    fwd_model = torch.compile(model) if args.compile else model
+    if args.compile:
+        print("torch.compile enabled (forward path)")
 
     # Transport: Linear interpolant + Velocity prediction = OT linear FM.
     # train_eps=sample_eps=0 stable for VELOCITY+LINEAR (transport.create_transport).
@@ -293,7 +305,7 @@ def main() -> int:
         y = y.to(device, non_blocking=True)
 
         with torch.amp.autocast(device.type, dtype=torch.float16, enabled=use_amp):
-            losses = transport.training_losses(model, z, dict(y=y))
+            losses = transport.training_losses(fwd_model, z, dict(y=y))
             loss = losses["loss"].mean()
 
         opt.zero_grad(set_to_none=True)
