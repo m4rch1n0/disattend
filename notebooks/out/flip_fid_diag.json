@@ -1,0 +1,17 @@
+{
+  "n_samples": 5000,
+  "reference_n": 50000,
+  "elapsed_s": 360.3,
+  "fid": {
+    "real": 6.703,
+    "clean": 7.237,
+    "imageflip": 7.26,
+    "latentflip": 77.97
+  },
+  "derived": {
+    "vae_recon_cost (clean - real)": 0.534,
+    "imageflip - clean": 0.023,
+    "latentflip_cost (latentflip - imageflip)": 70.71,
+    "latentflip_total (latentflip - clean)": 70.733
+  }
+}
