@@ -114,10 +114,14 @@ def main() -> int:
         device = torch.device("cuda")
     print(f"device={device}")
 
+    # Must match the training-time class_dropout_prob (0.1): with CFG dropout
+    # enabled, LabelEmbedder sizes its table at num_classes+1 (extra null
+    # token). Building with 0.0 yields num_classes rows and fails to load any
+    # trained checkpoint. The dropout *behavior* is disabled below via eval().
     model = MODEL_REGISTRY[args.model](
         input_size=args.latent_size,
         num_classes=args.num_classes,
-        class_dropout_prob=0.0,
+        class_dropout_prob=0.1,
     ).to(device)
 
     if args.ckpt:
