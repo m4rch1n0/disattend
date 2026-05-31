@@ -132,6 +132,11 @@ def parse_args() -> argparse.Namespace:
                     help="default = 100M sample budget at batch 16")
     ap.add_argument("--lr", type=float, default=1e-4)
     ap.add_argument("--weight-decay", type=float, default=0.0)
+    ap.add_argument("--grad-clip", type=float, default=0.0,
+                    help="max grad-norm (0 = off). UNet-B needs ~1.0 for fp16 "
+                         "stability; a single large-but-finite grad step "
+                         "otherwise poisons the weights to NaN (DiT-B did not "
+                         "need it). Kept 0 by default = DiT-B reproducible.")
     ap.add_argument("--ema-decay", type=float, default=0.9999)
     ap.add_argument("--hflip-prob", type=float, default=0.5)
     ap.add_argument("--log-every", type=int, default=100)
@@ -311,10 +316,17 @@ def main() -> int:
         opt.zero_grad(set_to_none=True)
         if scaler is not None:
             scaler.scale(loss).backward()
+            if args.grad_clip > 0:
+                # Unscale before clipping; scaler still records inf/nan found
+                # during unscale_ and skips the step in scaler.step().
+                scaler.unscale_(opt)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
             scaler.step(opt)
             scaler.update()
         else:
             loss.backward()
+            if args.grad_clip > 0:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
             opt.step()
 
         update_ema(ema, model, decay=args.ema_decay)
