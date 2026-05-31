@@ -145,9 +145,17 @@ class AttentionBlock(nn.Module):
         ch = C // self.num_heads
         qkv = qkv.reshape(B, 3, self.num_heads, ch, H * W)
         q, k, v = qkv.unbind(dim=1)
-        scale = 1.0 / math.sqrt(ch)
-        attn = torch.einsum("bhci,bhcj->bhij", q, k) * scale
-        attn = attn.softmax(dim=-1)
+        # fp16-safe attention (guided-diffusion recipe). Apply 1/sqrt(d) to q
+        # and k BEFORE the matmul (sqrt(scale) on each) so the fp16 QK^T
+        # accumulation over `ch` (up to 160) never holds the unscaled sum, and
+        # run the softmax in fp32. The previous `einsum(q,k) * scale` scaled
+        # AFTER the matmul, letting the raw fp16 dot-product overflow 65504 as
+        # the qkv weights grew (wd=0) -> inf -> NaN around step ~80-95k. SiT/DiT
+        # never hit this because timm's Attention is already fp32-safe; this
+        # only brings UNet-B in line (same scaled-dot-product math, fixed dtype).
+        scale = 1.0 / math.sqrt(math.sqrt(ch))
+        attn = torch.einsum("bhci,bhcj->bhij", q * scale, k * scale)
+        attn = attn.float().softmax(dim=-1).to(v.dtype)
         out = torch.einsum("bhij,bhcj->bhci", attn, v).reshape(B, C, H * W)
         out = self.proj_out(out).reshape(B, C, H, W)
         return out + x

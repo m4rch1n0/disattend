@@ -133,10 +133,13 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--lr", type=float, default=1e-4)
     ap.add_argument("--weight-decay", type=float, default=0.0)
     ap.add_argument("--grad-clip", type=float, default=0.0,
-                    help="max grad-norm (0 = off). UNet-B needs ~1.0 for fp16 "
-                         "stability; a single large-but-finite grad step "
-                         "otherwise poisons the weights to NaN (DiT-B did not "
-                         "need it). Kept 0 by default = DiT-B reproducible.")
+                    help="max grad-norm (0 = off, = DiT-B). NOT the fix for the "
+                         "UNet-B fp16 NaN (that was attention QK^T overflow, "
+                         "fixed in unet_b.py); kept only as an optional knob.")
+    ap.add_argument("--nan-abort", type=int, default=500,
+                    help="abort after this many CONSECUTIVE non-finite steps "
+                         "(watchdog vs the silent multi-hour NaN spin). Isolated "
+                         "NaNs that recover reset the streak.")
     ap.add_argument("--ema-decay", type=float, default=0.9999)
     ap.add_argument("--hflip-prob", type=float, default=0.5)
     ap.add_argument("--log-every", type=int, default=100)
@@ -297,6 +300,7 @@ def main() -> int:
     log_window_steps = 0
     t_window = time.perf_counter()
     t_global = time.perf_counter()
+    nan_streak = 0  # consecutive non-finite steps; watchdog aborts past --nan-abort
 
     loader_iter = iter(loader)
     while step < args.total_steps:
@@ -329,19 +333,35 @@ def main() -> int:
                 torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
             opt.step()
 
-        update_ema(ema, model, decay=args.ema_decay)
-
         loss_val = loss.item()
-        if not math.isfinite(loss_val):
-            # GradScaler will skip this step's opt update internally; we just
-            # surface the event so a streak of NaNs is visible in the log.
+        if math.isfinite(loss_val):
+            # Only fold a finite step into EMA; the scaler already skipped the
+            # opt update on any inf/nan grad, so model+EMA stay clean.
+            update_ema(ema, model, decay=args.ema_decay)
+            nan_streak = 0
+        else:
+            nan_streak += 1
             jsonl_append(log_path, {
                 "step": step + 1,
                 "event": "non_finite_loss",
                 "loss": loss_val,
+                "nan_streak": nan_streak,
                 "wall_time": time.strftime("%Y-%m-%d %H:%M:%S"),
             })
-            print(f"WARN step={step+1}: non-finite loss {loss_val} (skipping)")
+            print(f"WARN step={step+1}: non-finite loss {loss_val} "
+                  f"(skipping; streak={nan_streak})")
+            if nan_streak >= args.nan_abort:
+                # Watchdog: a long unbroken NaN streak = irrecoverable divergence
+                # (the scaler keeps skipping but cannot un-poison). Abort instead
+                # of spinning uselessly for hours, as the pre-fix runs did.
+                jsonl_append(log_path, {
+                    "step": step + 1, "event": "nan_abort",
+                    "nan_streak": nan_streak,
+                    "wall_time": time.strftime("%Y-%m-%d %H:%M:%S"),
+                })
+                print(f"FATAL step={step+1}: {nan_streak} consecutive non-finite "
+                      f"steps -> aborting (diverged).")
+                return 1
             loss_val = 0.0
         log_window_loss += loss_val
         log_window_steps += 1
