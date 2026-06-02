@@ -140,6 +140,13 @@ def parse_args() -> argparse.Namespace:
                     help="abort after this many CONSECUTIVE non-finite steps "
                          "(watchdog vs the silent multi-hour NaN spin). Isolated "
                          "NaNs that recover reset the streak.")
+    ap.add_argument("--amp-dtype", choices=["float16", "bfloat16", "float32"],
+                    default="float16",
+                    help="autocast dtype. DiT-B used float16 (its activations fit "
+                         "fp16's range). UNet-B needs bfloat16 (fp32 range -> no "
+                         "65504 overflow; NVIDIA only) and then weight_decay can "
+                         "go back to 0 = DiT recipe. float32 disables autocast. "
+                         "GradScaler is used only with float16.")
     ap.add_argument("--ema-decay", type=float, default=0.9999)
     ap.add_argument("--hflip-prob", type=float, default=0.5)
     ap.add_argument("--log-every", type=int, default=100)
@@ -231,9 +238,14 @@ def main() -> int:
         betas=(0.9, 0.999),
     )
 
-    # AMP for fp16 (RDNA 2: bf16 banned, fp32 fallback if no GPU)
-    use_amp = device.type == "cuda"
-    scaler = torch.amp.GradScaler("cuda") if use_amp else None
+    # AMP. float16 needs a GradScaler; bfloat16 (fp32 range) does not and is the
+    # cloud/NVIDIA path for UNet-B; float32 disables autocast entirely.
+    amp_dtype = {"float16": torch.float16, "bfloat16": torch.bfloat16,
+                 "float32": torch.float32}[args.amp_dtype]
+    use_amp = device.type == "cuda" and amp_dtype != torch.float32
+    scaler = (torch.amp.GradScaler("cuda")
+              if use_amp and amp_dtype == torch.float16 else None)
+    print(f"amp: dtype={args.amp_dtype} autocast={use_amp} grad_scaler={scaler is not None}")
 
     # Data
     print("loading dataset...")
@@ -288,6 +300,7 @@ def main() -> int:
             n_samples=args.fid_samples,
             n_steps=args.fid_steps_ode,
             sample_batch=args.fid_sample_batch,
+            amp_dtype=amp_dtype,
         )
         print(f"  ref n={fid_eval.ref_n}")
 
@@ -313,7 +326,7 @@ def main() -> int:
         z = z.to(device, non_blocking=True)
         y = y.to(device, non_blocking=True)
 
-        with torch.amp.autocast(device.type, dtype=torch.float16, enabled=use_amp):
+        with torch.amp.autocast(device.type, dtype=amp_dtype, enabled=use_amp):
             losses = transport.training_losses(fwd_model, z, dict(y=y))
             loss = losses["loss"].mean()
 

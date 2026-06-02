@@ -97,12 +97,14 @@ class FIDEvaluator:
         n_steps: int = 25,
         sample_batch: int = 16,
         seed: int = 42,
+        amp_dtype: torch.dtype = torch.float16,
     ):
         self.device = device
         self.n_samples = int(n_samples)
         self.n_steps = int(n_steps)
         self.sample_batch = int(sample_batch)
         self.seed = int(seed)
+        self.amp_dtype = amp_dtype
 
         if vae is None:
             self.vae = AutoencoderKL.from_pretrained(
@@ -144,7 +146,7 @@ class FIDEvaluator:
             z = torch.randn(B, 4, 32, 32, device=self.device, generator=gen)
             y = torch.randint(0, NUM_CLASSES, (B,), device=self.device,
                               generator=gen)
-            with torch.amp.autocast(self.device.type, dtype=torch.float16):
+            with torch.amp.autocast(self.device.type, dtype=self.amp_dtype):
                 z0 = euler_ode_sample(model, z, y, n_steps=self.n_steps)
             imgs = self._decode_to_images(z0)
             feats = inception_features(self.inception, imgs)
