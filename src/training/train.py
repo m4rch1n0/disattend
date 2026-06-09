@@ -132,6 +132,21 @@ def parse_args() -> argparse.Namespace:
                     help="default = 100M sample budget at batch 16")
     ap.add_argument("--lr", type=float, default=1e-4)
     ap.add_argument("--weight-decay", type=float, default=0.0)
+    ap.add_argument("--lr-schedule", choices=["constant", "cosine"],
+                    default="constant",
+                    help="LR schedule. 'constant' = DiT-B (LayerNorm is "
+                         "scale-invariant, tolerates a constant LR). 'cosine' = "
+                         "warmup + cosine decay to --lr-min, needed for UNet-B: "
+                         "GroupNorm is NOT scale-invariant, so a constant LR "
+                         "drives unbounded weight-norm growth -> FID degrades "
+                         "monotonically (observed in 20260603-UNet-B-bf16-clip).")
+    ap.add_argument("--warmup-steps", type=int, default=0,
+                    help="linear LR warmup steps (0 = off)")
+    ap.add_argument("--lr-min", type=float, default=0.0,
+                    help="floor LR reached at --lr-decay-steps (cosine only)")
+    ap.add_argument("--lr-decay-steps", type=int, default=0,
+                    help="step at which cosine reaches --lr-min "
+                         "(0 = use --total-steps)")
     ap.add_argument("--grad-clip", type=float, default=0.0,
                     help="max grad-norm (0 = off, = DiT-B). NOT the fix for the "
                          "UNet-B fp16 NaN (that was attention QK^T overflow, "
@@ -175,6 +190,23 @@ def parse_args() -> argparse.Namespace:
                                 / "fid_ref_stats.pt"))
     ap.add_argument("--fid-sample-batch", type=int, default=16)
     return ap.parse_args()
+
+
+def lr_at_step(step: int, *, base_lr: float, warmup: int, decay_steps: int,
+               lr_min: float, schedule: str) -> float:
+    """LR as a pure function of step (resume-safe: no scheduler state to save).
+
+    Linear warmup 0->base_lr over `warmup` steps, then either constant or a
+    cosine decay base_lr->lr_min reached at `decay_steps` and held after.
+    """
+    if warmup > 0 and step < warmup:
+        return base_lr * (step + 1) / warmup
+    if schedule == "constant":
+        return base_lr
+    if step >= decay_steps:
+        return lr_min
+    progress = (step - warmup) / max(1, decay_steps - warmup)
+    return lr_min + 0.5 * (base_lr - lr_min) * (1.0 + math.cos(math.pi * progress))
 
 
 def main() -> int:
@@ -307,6 +339,13 @@ def main() -> int:
     permanent_ckpts = {500_000, 1_000_000, 1_500_000, 2_000_000,
                        3_000_000, 4_000_000, 5_000_000, 6_400_000}
 
+    lr_decay_steps = (args.lr_decay_steps if args.lr_decay_steps > 0
+                      else args.total_steps)
+    if args.lr_schedule != "constant" or args.warmup_steps > 0:
+        print(f"lr schedule: {args.lr_schedule} base={args.lr} "
+              f"warmup={args.warmup_steps} decay_steps={lr_decay_steps} "
+              f"min={args.lr_min}")
+
     print(f"training to step {args.total_steps}")
     step = start_step
     log_window_loss = 0.0
@@ -325,6 +364,12 @@ def main() -> int:
 
         z = z.to(device, non_blocking=True)
         y = y.to(device, non_blocking=True)
+
+        cur_lr = lr_at_step(step, base_lr=args.lr, warmup=args.warmup_steps,
+                            decay_steps=lr_decay_steps, lr_min=args.lr_min,
+                            schedule=args.lr_schedule)
+        for g in opt.param_groups:
+            g["lr"] = cur_lr
 
         with torch.amp.autocast(device.type, dtype=amp_dtype, enabled=use_amp):
             losses = transport.training_losses(fwd_model, z, dict(y=y))
