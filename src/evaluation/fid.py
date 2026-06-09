@@ -3,7 +3,7 @@
 Pipeline:
   1. Sample N latents z_T ~ N(0, I), labels y ~ Uniform(1000).
   2. Integrate z_T -> z_0 with Euler ODE on the velocity model (deterministic
-     and differentiable, matching the SiT convention t=0 data, t=1 noise).
+     and differentiable, matching the SiT convention t=0 noise, t=1 data).
   3. VAE.decode(z_0 / 0.18215) -> images in [-1, 1].
   4. Map to [0, 1], pass through pytorch-fid InceptionV3 (which normalizes
      and resizes internally) to get 2048-dim features.
