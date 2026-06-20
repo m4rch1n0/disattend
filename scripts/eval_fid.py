@@ -42,6 +42,14 @@ def main():
     ap.add_argument("--n-steps", type=int, default=25)
     ap.add_argument("--n-samples", type=int, default=5000)
     ap.add_argument("--sample-batch", type=int, default=16)
+    ap.add_argument("--amp-dtype", choices=["float16", "bfloat16", "float32"],
+                    default="float16",
+                    help="autocast dtype for the velocity-model sampling. "
+                         "DiT-B used float16 (fits fp16 range). UNet-B must NOT "
+                         "use float16 (activation overflow -> NaN/garbage FID); "
+                         "use float32 (canonical, overflow-safe on any GPU) or "
+                         "bfloat16 (NVIDIA). For a matched DiT-vs-UNet comparison "
+                         "run both in float32.")
     ap.add_argument("--ref-stats", default="data/imagenet_latents/fid_ref_stats.pt")
     ap.add_argument("--out", default=None,
                     help="jsonl file to append result to (default: print only)")
@@ -64,12 +72,15 @@ def main():
     step = ckpt.get("step", -1)
     print(f"loaded checkpoint step={step} from {args.checkpoint}")
 
+    amp_dtype = {"float16": torch.float16, "bfloat16": torch.bfloat16,
+                 "float32": torch.float32}[args.amp_dtype]
     evaluator = FIDEvaluator(
         device=device,
         ref_stats_path=Path(args.ref_stats),
         n_samples=args.n_samples,
         n_steps=args.n_steps,
         sample_batch=args.sample_batch,
+        amp_dtype=amp_dtype,
     )
     print(f"running FID: n_samples={args.n_samples} n_steps={args.n_steps} ...")
     t0 = time.time()
