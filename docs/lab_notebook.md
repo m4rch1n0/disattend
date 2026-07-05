@@ -114,3 +114,49 @@ run before I worked out why the loss stayed at 0.
 check, and write `experiments/phase2_pilot/PREREG.md` (aggregation, gate,
 election rule) and tag it before the comparison runs, so the analysis choices
 are fixed before I see any results.
+
+---
+
+## 2026-07-05 (later) - Phase 2 pilot ran, GO, primary metric = effective rank
+
+Ran the full pilot the same day the modules landed (both models, AB 100 seeds +
+FID 1000 seeds, fp32, eps=0.05, 20 PGD iters). Timings on the 6900 XT: SiT AB
+91 min (12 N=256 layers x 12 heads of CPU SVD is the cost), UNet AB 15 min,
+SiT FID 124 min, UNet FID 46 min. Pre-registration tagged `phase2-prereg`
+before the comparison. Figures in `notebooks/out/phase2_*.png`.
+
+**GO.** Metrics A (entropy) and B (effective rank, both definitions) pass the
+triplet gate on BOTH models, Wilcoxon p<0.001, Cohen's d 0.77-1.37. LPIPS
+efficacy passes on both (PGD/random ratio 14.9 and 19.9) so the attention
+result is interpretable -- no image-space fallback needed.
+
+Effect sizes (d, PGD-vs-random on the N=256 locus): entropy 1.24 (DiT) / 1.37
+(UNet); flatness 0.93 / 0.77; effective rank (RV) 1.09 / 1.09.
+
+**Primary metric = effective rank (Roy-Vetterli).** Identical d on both models,
+clean direction (PGD collapses the rank), and it's the Phase 4 target. Entropy
+has a marginally higher d but its signed shift nearly cancels across seeds
+(mixed direction: the attack perturbs sharpness strongly but not consistently
+up or down), so it's a weaker dose-response axis -- kept as secondary.
+
+**Differential FID eliminated, and it's an interesting reason.** ddFID is
+strongly non-zero but the WRONG way: PGD *lowers* FID (SiT 107.8->91.7, UNet
+136.1->119.0), so the perturbed batch is slightly closer to real ImageNet. The
+untargeted displacement attack changes each image a lot (LPIPS 0.54, L2 ~45)
+but doesn't hurt the batch's distributional realism -- see the qualitative
+grids, the PGD samples are clearly different but still plausible images. So
+Diff-FID is the wrong detector for this attack; per the pre-registration a
+wrong-direction result fails the gate. Absolute FID at n=1000 is inflated vs
+the 50k headline (small-n bias, expected).
+
+**Cross-architecture, preliminary.** At eps=0.05 the fingerprint is comparable
+in size across the two backbones (erank d identical). Benign levels differ a
+lot though -- the UNet's attention is intrinsically sparser/lower-rank at
+N=256 (erank 0.196 vs 0.411) -- so keep the "attention is less central in the
+UNet" caveat and frame everything as an architecture fingerprint, not
+robustness.
+
+Phase 3 hand-off: primary erank_rv, secondary entropy, eps grid unchanged
+({0.01,0.02,0.05,0.1}, 0.05 is responsive and not saturated), disjoint seeds,
+add the DiT@FID95 matched-quality control and the NFE-transfer check.
+`docs/phase2_plan.md` closed (section 9).
