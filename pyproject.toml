@@ -6,11 +6,13 @@ requires-python = ">=3.12"
 dependencies = [
     "diffusers>=0.37.1",
     "huggingface-hub>=1.11.0",
+    "lpips>=0.1.4",
     "matplotlib>=3.10.8",
     "numpy>=2.4.3",
     "pyarrow>=24.0.0",
     "pytorch-fid>=0.3.0",
     "safetensors>=0.7.0",
+    "scipy>=1.17.1",
     "timm>=1.0.26",
     "torch>=2.11.0",
     "torchdiffeq>=0.2.5",
