@@ -160,3 +160,38 @@ Phase 3 hand-off: primary erank_rv, secondary entropy, eps grid unchanged
 ({0.01,0.02,0.05,0.1}, 0.05 is responsive and not saturated), disjoint seeds,
 add the DiT@FID95 matched-quality control and the NFE-transfer check.
 `docs/phase2_plan.md` closed (section 9).
+
+## 2026-07-06 - Phase 3 first launch stalled on SVD cost; speedups A+B1, PREREG amended
+
+First grid launch (nohup, all three legs) killed inside batch 1: the CPU
+spectral reduction dominates. Accounting per DiT batch of 25 seeds: 8,100
+batched SVD calls (2,700 for the 9 grid measures at 25 steps; 5,400 for the
+NFE-transfer measures, which run at 50/100 steps -- two thirds of the SVD
+spend on steps no registered test consumes). ~88 min SVD + ~25 min GPU
+(the 40-iter x 4-eps attack, benched at 8.4 s/iter, is the incompressible
+floor) -> ~57 h forecast for SiT + UNet + FID95 control.
+
+Two changes adopted (PREREG section 9), both verified before any data:
+
+- **A: spectra via eigvalsh(A^T A)** instead of svdvals (1.87x on the
+  bottleneck). Exact identity, but fp32 squaring nudges erank on
+  near-degenerate heads -- the first-snapshot guard caught exactly that on
+  real maps (DiT block-0 sinks, per-cell worst 7.6e-4 vs 1e-5 typical).
+  Measured at the levels that matter: co-primary-A locus contrast bias
+  <= 4.4e-6 (SESOI-A/2300), co-primary-B worst per-layer late contrast bias
+  4.4e-5 (share impact ~3e-4 vs SESOI-B 0.10). fp64 route measured clean
+  (<= 1.9e-6) but only 1.19x -- rejected. Guard stays as a 2e-3 tripwire.
+- **B1: NFE-transfer measured on its registered window only** (t >= 0.72:
+  steps 35-49/50, 71-99/100); earlier steps run hookless. Bit-identical
+  inputs to the transfer tests; only never-used early substrate skipped.
+  Grid substrate untouched (full 25 steps, all layers/heads/metrics).
+
+Rejected: early-step subsampling of the grid substrate (would downgrade the
+pre-registered full-trajectory robustness scope; pilot-substrate simulation
+said bias <= 2-3% with 5 early steps, r >= 0.9996 -- shelved, not needed) and
+NFE-transfer on 100 seeds (~4% false-flag on the x/div-2 magnitude window).
+
+New forecast ~28 h total (DiT ~20, UNet ~4, FID95 ~4.5); batch ~58 min so
+partial.pt checkpoints every ~4 h. Smoke run (n=2, eps=0.05, 2 attack iters)
+green: grid files full-trajectory, nfe files carry step_indices/t_min, guard
+passes, no NaN. Relaunch pending explicit GO.

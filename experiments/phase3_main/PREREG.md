@@ -213,3 +213,52 @@ analysis.json; tables and figures per docs/phase3_plan.md section 5.
 Dose-response member: per-seed OLS slope of the absolute contrast on log(eps)
 over the four grid points, paired two-sided cross-model test on the slopes
 (uses all four eps -- the scoped exception to the family's primary-eps rule).
+
+## 9. Pre-launch amendments (2026-07-06; no Phase-3 data existed)
+
+The first launch attempt showed the CPU spectral reduction dominating wall
+time (~57 h forecast for the three legs, two thirds of it SVD on NFE-transfer
+steps no registered test consumes). Two implementation changes were adopted
+and verified BEFORE any Phase-3 data generation; forecast ~28 h. Component
+benches and real-map equivalence measurements dated 2026-07-06, on the run
+hardware (i9-10900K / RX 6900 XT), smoke-tested end to end.
+
+**9a. Singular values via the Gram identity (amends the section-0 "metric
+code frozen" line).** `svdvals_per_layer` computes per-head spectra as
+sigma_i(A) = sqrt(eigvalsh(A^T A)) instead of direct `torch.linalg.svdvals`
+(1.9x faster at phase-3 shapes; the run is SVD-bound). The identity is exact;
+in fp32 the squaring floors singular values below ~sigma_max*sqrt(eps), which
+perturbs erank_rv on near-degenerate heads (DiT block-0 attention sinks).
+Measured against direct svdvals on real DiT maps (batch 25, benign /
+Rademacher / PGD branches, steps spanning the trajectory): per-cell
+(layer, step, head) worst 7.6e-4 (degenerate pgd@late cells; typical ~1e-5);
+worst per-layer head-mean late-window contrast -- the co-primary-B input --
+4.4e-5 on block 0 (share-statistic impact ~3e-4 vs SESOI-B = 0.10), all other
+layers <= 4e-6; N=256-locus late contrast -- the co-primary-A input --
+<= 4.4e-6 (SESOI-A / 2300). Every registered statistic therefore moves >=
+300x less than its decision threshold. Flatness agrees to <= 2e-6 everywhere;
+entropy involves no spectra and is untouched. Runtime guard: the first
+reduced snapshot of every run recomputes direct svdvals on the same real maps
+and hard-fails above a 2e-3 per-cell tolerance (2.6x the measured worst;
+genuine breakage -- transpose/ordering bugs -- manifests at >= 1e-2).
+
+**9b. NFE-transfer substrate restricted to its registered scope (section 6).**
+At NFE 50 and 100 the runner attaches capture hooks and reduces attention
+only on the normalized-t window t >= 0.72 -- post-step 0-indexed Euler steps
+35-49 of 50 and 71-99 of 100 -- exactly the scope the section-6 transfer
+tests (co-primaries A and B) are defined on; steps before the window run with
+no hooks. The values entering every registered transfer statistic are
+bit-identical to a full-trajectory measure; what is no longer produced is
+early-step substrate at NFE 50/100, which no registered analysis consumes.
+The 25-step grid substrate (section 1) remains full-trajectory (all layers x
+25 steps x heads, all three metrics). `nfe*_eps*.pt` files persist
+`step_indices` and `t_min`.
+
+Considered and NOT adopted, keeping registered scopes intact: subsampling
+early steps of the 25-step substrate (would downgrade the full-trajectory
+robustness scope to a stratified estimate; measured bias would be <= 2-3%,
+but the scope stays exact instead); reducing the transfer n from 500 to 100
+(the x/div-2 transfer magnitude window would acquire a ~4% noise-driven
+false-flag probability); fp64 eigvalsh (per-cell <= 1.9e-6, but only 1.19x --
+the fp32 route's aggregate-level equivalence above is the operative
+guarantee).

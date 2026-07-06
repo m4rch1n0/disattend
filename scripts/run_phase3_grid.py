@@ -10,7 +10,9 @@ and changes what the PREREG requires:
   - benign measured ONCE per (model, seed) and reused across all eps;
   - class-distinct labels 0..n-1;
   - full per-layer x per-step x per-head substrate persisted per branch;
-  - optional NFE-transfer (50/100, forward-only) at the primary eps.
+  - optional NFE-transfer (50/100, forward-only) at the primary eps, measured
+    on the PREREG section-6 window only (t >= 0.72; amendment in PREREG
+    section 9) -- early steps run without hooks.
 
 Seed anchoring (audit fix): random and PGD-init seeds key off the eps VALUE via a
 frozen EPS_INDEX map and off the per-SEED id, NOT off the eps position in the
@@ -52,8 +54,10 @@ import lpips as lpips_lib
 import torch
 from diffusers import AutoencoderKL
 
-from src.attacks.pgd_latent import load_model, pgd_latent, rademacher_delta
+from src.attacks.pgd_latent import euler_step, load_model, pgd_latent, rademacher_delta
+from src.evaluation.attention_metrics import reduce_snapshot, stack_steps
 from src.evaluation.fid import SCALING_FACTOR, VAE_REPO
+from src.utils.attention_hooks import AttentionCollector
 from scripts.run_phase2_pilot import (cat_stacked, decode_images, file_md5,
                                       measure_attention)
 
@@ -147,9 +151,38 @@ def make_pgd_init(z, eps, ids, device) -> torch.Tensor:
     ])
 
 
+NFE_T_MIN = 0.72  # PREREG section 6: transfer tests live on normalized t >= 0.72
+
+
+def late_window(n_steps: int) -> list[int]:
+    """0-indexed Euler steps in the section-6 window, post-step t = (i+1)/n."""
+    idx = [i for i in range(n_steps) if (i + 1) / n_steps >= NFE_T_MIN - 1e-9]
+    assert idx and idx == list(range(idx[0], n_steps)), idx
+    return idx
+
+
 @torch.inference_mode()
 def measure_nfe(model, z, y, nfe, device):
-    return measure_attention(model, z, y, nfe, device)[0]
+    """NFE-transfer measure, substrate on the section-6 window only.
+
+    The transfer tests (co-primaries A and B) are defined on normalized
+    t >= 0.72, so the steps before the window run with NO hooks attached:
+    no capture, no CPU transfer, no SVD (PREREG amendment, section 9).
+    The values entering every registered statistic are bit-identical to a
+    full-trajectory measure; only never-used early-step substrate is skipped.
+    """
+    win = late_window(nfe)
+    ts = torch.linspace(0.0, 1.0, nfe + 1, device=device)
+    x = z
+    for i in range(win[0]):
+        x = euler_step(model, x, ts[i], ts[i + 1] - ts[i], y)
+    col = AttentionCollector(model, store_dtype=torch.float32, store_device="cpu")
+    steps = []
+    with col:
+        for i in range(win[0], nfe):
+            x = euler_step(model, x, ts[i], ts[i + 1] - ts[i], y)
+            steps.append(reduce_snapshot(col.snapshot()))
+    return stack_steps(steps)
 
 
 def _blank_state(eps_grid, nfe_extra, primary_eps):
@@ -170,7 +203,8 @@ def run_grid(model, vae, lpips_net, args, device, out_dir: Path) -> None:
     partial = out_dir / "partial.pt"
     fp = {"model": args.model, "eps_grid": eps_grid, "n_seeds": n, "batch_size": bs,
           "n_steps_attack": args.n_steps_attack, "n_steps_ode": args.n_steps_ode,
-          "nfe_extra": list(args.nfe_extra), "seed_base": SEED_BASE}
+          "nfe_extra": list(args.nfe_extra), "seed_base": SEED_BASE,
+          "nfe_t_min": NFE_T_MIN}
 
     if partial.exists():
         blob = torch.load(partial, weights_only=False)
@@ -246,7 +280,8 @@ def run_grid(model, vae, lpips_net, args, device, out_dir: Path) -> None:
         }, out_dir / f"eps_{eps}.pt")
     for (nfe, eps), s in st["nfe"].items():
         torch.save({"eps": eps, "nfe": nfe, "ben": s["ben"], "rand": s["rand"],
-                    "pgd": s["pgd"]}, out_dir / f"nfe{nfe}_eps{eps}.pt")
+                    "pgd": s["pgd"], "step_indices": late_window(nfe),
+                    "t_min": NFE_T_MIN}, out_dir / f"nfe{nfe}_eps{eps}.pt")
     partial.unlink(missing_ok=True)
     print(f"[p3 {args.model}] saved to {out_dir}", flush=True)
 
@@ -285,7 +320,8 @@ def main() -> int:
     with open(out_dir / "meta.json", "w") as f:
         json.dump({"model": args.model, "args": vars(args), "ckpt": str(ckpt_path),
                    "ckpt_md5": file_md5(ckpt_path), "seed_base": SEED_BASE,
-                   "eps_index": EPS_INDEX, "git_commit": commit, "torch": torch.__version__,
+                   "eps_index": EPS_INDEX, "nfe_t_min": NFE_T_MIN,
+                   "git_commit": commit, "torch": torch.__version__,
                    "peak_vram_gb": round(torch.cuda.max_memory_allocated(device) / 1e9, 2),
                    "wall_seconds": round(t_total, 1),
                    "finished_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}, f, indent=2)

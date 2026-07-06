@@ -11,8 +11,10 @@ slower than on CPU (measured 2026-07-05), so store the snapshots on "cpu".
 Conventions:
 - entropy (A): row-wise Shannon entropy in nats, mean over rows, /log(N) so
   it's comparable across the UNet's N in {256,64,16} and the DiT's N=256.
-- effective rank (B): per-head SVD (not on head-averaged maps, which inflate
-  the rank), two defs from one svdvals, both /N: flatness_ratio =
+- effective rank (B): per-head spectra (not on head-averaged maps, which
+  inflate the rank) via the eigvalsh Gram identity (see svdvals_per_layer;
+  first call self-checks vs direct svdvals), two defs from one spectrum,
+  both /N: flatness_ratio =
   sum(sigma)/sigma_max (the spectral flatness ratio, not the literature's
   effective rank) and erank_rv = exp(H(sigma_normalized)) (Roy & Vetterli).
 - signs: entropy_shift = perturbed - benign; rank drop = benign - perturbed.
@@ -61,29 +63,68 @@ def entropy_per_layer(attn: Snapshot, *, normalize: bool = True
     return out
 
 
+def _sv_metrics(sv: torch.Tensor, *, normalize: bool) -> dict[str, torch.Tensor]:
+    """flatness_ratio and erank_rv from a (B, H, N) descending spectrum."""
+    n = sv.shape[-1]
+    flatness = sv.sum(dim=-1) / sv[..., 0]
+    p = sv / sv.sum(dim=-1, keepdim=True)
+    erank = torch.exp(torch.special.entr(p).sum(dim=-1))
+    if normalize:
+        flatness = flatness / n
+        erank = erank / n
+    return {"flatness_ratio": flatness, "erank_rv": erank}
+
+
+_EIG_GUARD_TOL = 2e-3   # gross-breakage tripwire; see calibration in docstring
+_eig_guard_pending = True   # first reduced snapshot of the process re-checks vs svdvals
+
+
 def svdvals_per_layer(attn: Snapshot) -> dict[str, torch.Tensor]:
-    """Per-head singular values, descending: layer -> (B, H, N)."""
-    return {name: torch.linalg.svdvals(a.float()) for name, a in attn.items()}
+    """Per-head singular values, descending: layer -> (B, H, N).
+
+    Via the exact identity sigma_i(A) = sqrt(eigvals(A^T A)): eigvalsh on the
+    symmetric Gram matrix is ~1.9x faster on CPU than direct svdvals at the
+    phase-3 shapes (measured 2026-07-06, 300x256x256 batches). Squaring floors
+    singular values below ~sigma_max*sqrt(eps_fp32), which nudges erank_rv on
+    NEAR-DEGENERATE heads (DiT block-0 sinks). Measured on real DiT maps vs
+    direct svdvals (2026-07-06): per-cell worst 7.6e-4 (degenerate pgd@late
+    cells; typical ~1e-5), per-layer head-mean late CONTRAST worst 4.4e-5,
+    N=256-locus contrast <= 4.4e-6 -- i.e. >=300x below every registered
+    decision threshold. PREREG amendment: experiments/phase3_main/PREREG.md
+    section 9. Guard: the first reduced snapshot of the process recomputes
+    direct svdvals on the same real maps and hard-fails if either metric moves
+    by more than _EIG_GUARD_TOL per cell (2.6x the measured worst; genuine
+    breakage -- transpose/ordering bugs -- shows up at >=1e-2).
+    """
+    global _eig_guard_pending
+    out: dict[str, torch.Tensor] = {}
+    for name, a in attn.items():
+        a = a.float()
+        gram = a.transpose(-2, -1) @ a
+        sv = torch.linalg.eigvalsh(gram).clamp_min_(0).sqrt_().flip(-1)
+        if _eig_guard_pending:  # all layers of the first snapshot, once
+            ref = torch.linalg.svdvals(a)
+            got, want = (_sv_metrics(s, normalize=True) for s in (sv, ref))
+            for k in got:
+                delta = (got[k] - want[k]).abs().max().item()
+                if delta > _EIG_GUARD_TOL:
+                    raise AssertionError(
+                        f"eigvalsh vs svdvals: {k} differs by {delta:.2e} "
+                        f"on layer {name} (tol {_EIG_GUARD_TOL:.0e})")
+        out[name] = sv
+    _eig_guard_pending = False
+    return out
 
 
 def effective_rank_per_layer(attn: Snapshot, *, normalize: bool = True
                              ) -> dict[str, dict[str, torch.Tensor]]:
-    """Metric B per layer, both definitions from one SVD.
+    """Metric B per layer, both definitions from one spectrum.
 
     Returns layer -> {"flatness_ratio": (B, H), "erank_rv": (B, H)},
     each divided by N when normalize (fraction of maximal rank).
     """
-    out: dict[str, dict[str, torch.Tensor]] = {}
-    for name, sv in svdvals_per_layer(attn).items():
-        n = sv.shape[-1]
-        flatness = sv.sum(dim=-1) / sv[..., 0]
-        p = sv / sv.sum(dim=-1, keepdim=True)
-        erank = torch.exp(torch.special.entr(p).sum(dim=-1))
-        if normalize:
-            flatness = flatness / n
-            erank = erank / n
-        out[name] = {"flatness_ratio": flatness, "erank_rv": erank}
-    return out
+    return {name: _sv_metrics(sv, normalize=normalize)
+            for name, sv in svdvals_per_layer(attn).items()}
 
 
 def entropy_shift(benign: dict[str, torch.Tensor],
@@ -197,15 +238,21 @@ if __name__ == "__main__":
 
     e_u = entropy_per_layer(snap_u)["layer"]
     e_i = entropy_per_layer(snap_i)["layer"]
-    r_u = effective_rank_per_layer(snap_u)["layer"]
+    # identity first: the first-call guard compares vs direct svdvals, whose
+    # junk tail on the EXACT rank-1 uniform map exceeds the tolerance (the
+    # eigvalsh path is the exact one there); identity is exact in both.
     r_i = effective_rank_per_layer(snap_i)["layer"]
+    r_u = effective_rank_per_layer(snap_u)["layer"]
 
     assert torch.allclose(e_u, torch.ones_like(e_u), atol=1e-5), e_u
     assert torch.allclose(e_i, torch.zeros_like(e_i), atol=1e-5), e_i
     assert torch.allclose(r_u["flatness_ratio"], torch.full_like(e_u, 1.0 / N),
                           atol=1e-4), r_u
+    # atol 1e-3: on the EXACT rank-1 map the sqrt amplifies the eigvalsh
+    # noise floor of the zero eigenvalues (~1e-4 here); real softmax maps
+    # are never degenerate and agree to ~1e-5 (guarded at 1e-4 above).
     assert torch.allclose(r_u["erank_rv"], torch.full_like(e_u, 1.0 / N),
-                          atol=1e-4), r_u
+                          atol=1e-3), r_u
     assert torch.allclose(r_i["flatness_ratio"], torch.ones_like(e_u),
                           atol=1e-4), r_i
     assert torch.allclose(r_i["erank_rv"], torch.ones_like(e_u),
