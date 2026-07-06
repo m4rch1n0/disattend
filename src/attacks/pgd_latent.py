@@ -122,6 +122,7 @@ def pgd_latent(
     cfg_scale: float = 1.0,
     loss_fn: str | Callable[[torch.Tensor, torch.Tensor], torch.Tensor] = "l2_output",
     generator: torch.Generator | None = None,
+    delta_init: torch.Tensor | None = None,
     use_checkpoint: bool = True,
     verbose: bool = False,
 ) -> tuple[torch.Tensor, dict]:
@@ -179,7 +180,12 @@ def pgd_latent(
 
     # random start (Madry). needed here, not just standard: the sampler is
     # deterministic, so at delta=0 the grad is exactly 0 and sign(0)=0 -> stuck.
-    delta = torch.empty_like(z_T).uniform_(-eps, eps, generator=generator)
+    # delta_init lets the caller pass a per-seed start (batch-invariant, anchored
+    # to the seed rather than the batch) for paired cross-model comparisons.
+    if delta_init is not None:
+        delta = delta_init.detach().clone().clamp_(-eps, eps)
+    else:
+        delta = torch.empty_like(z_T).uniform_(-eps, eps, generator=generator)
 
     losses: list[float] = []
     grad_norms: list[float] = []
