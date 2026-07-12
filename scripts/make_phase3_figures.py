@@ -94,7 +94,7 @@ def f1(legs, steps):
 
 
 def f2(legs, steps, analysis):
-    profs, cis, keys, s_note = {}, {}, {}, {}
+    profs, cis, keys, s_val, s_note = {}, {}, {}, {}, {}
     for m, layers, inp in (("dit", DIT_ALL, DIT_IN), ("dit95", DIT_ALL, DIT_IN),
                            ("unet", UNET_ALL, UNET_IN)):
         d = legs[m]["eps"][PRIMARY_EPS]
@@ -102,7 +102,16 @@ def f2(legs, steps, analysis):
         profs[m] = [pl[n].mean() for n in layers]
         cis[m] = [ci95(pl[n]) for n in layers]
         keys[m] = layers
-        s_note[m] = f"S = {share_profile(pl, inp, layers):+.2f}"
+        s_val[m] = float(share_profile(pl, inp, layers))
+        s_note[m] = f"S = {s_val[m]:+.2f}"
+    # persist the data behind the figure (the DiT@FID95 per-layer profile is
+    # not in analysis.json, which the frozen analyzer wrote pre-control)
+    with open(FIG / "f2_profiles.json", "w") as f:
+        json.dump({m: {"layers": keys[m],
+                       "contrast_mean": [float(v) for v in profs[m]],
+                       "ci95_half": [float(v) for v in cis[m]],
+                       "S_profile": s_val[m]}
+                   for m in profs}, f, indent=2)
     ymax = max(max(np.array(profs[m]) + np.array(cis[m])) for m in profs) * 1.28
 
     fig, axes = plt.subplots(1, 3, figsize=(10.5, 3.1), sharey=True)
