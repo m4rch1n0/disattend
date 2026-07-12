@@ -10,9 +10,11 @@ Sapienza University of Rome.
 
 I trained two class-conditional generative models from scratch under the same
 budget: a transformer (SiT-B/2, flow matching) and a UNet of comparable size,
-both on SD-VAE latents of ImageNet-256, about 6.4M samples each on a single
-RX 6900 XT (the transformer ends at FID-50k 68.7, the UNet at 99.1, same
-25-step Euler sampler, fp32).
+both on SD-VAE latents of ImageNet-256, 6.4M training steps each (about 100M
+samples seen). Most of the training ran on my RX 6900 XT; the UNet hit an
+fp16 overflow in its attention there and finished on a cloud RTX 3090. The
+transformer ends at FID-50k 68.7, the UNet at 99.1, same 25-step Euler
+sampler, fp32.
 
 The attack is L_inf PGD on the initial noise `z_T`, backpropagated through
 the entire sampler with gradient checkpointing. Every attacked seed is paired
