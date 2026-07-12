@@ -1,0 +1,55 @@
+{
+  "note": "pilot substrate, n=1000 per branch; terms in FID units. mean_share = (mean_term(ben) - mean_term(pgd)) / (FID(ben) - FID(pgd))",
+  "SiT-B/2": {
+    "terms": {
+      "ben": {
+        "fid": 107.77984968811688,
+        "mean_term": 34.37653350830078,
+        "cov_term": 73.4033161798161,
+        "tr_sigma_g": 213.4111815521935
+      },
+      "rand": {
+        "fid": 107.53857664212973,
+        "mean_term": 34.31217956542969,
+        "cov_term": 73.22639707670004,
+        "tr_sigma_g": 212.8990582212499
+      },
+      "pgd": {
+        "fid": 91.66166512768558,
+        "mean_term": 24.08051109313965,
+        "cov_term": 67.58115403454593,
+        "tr_sigma_g": 210.87560063289547
+      }
+    },
+    "fid_drop_ben_minus_pgd": 16.118184560431303,
+    "mean_term_share_of_drop": 0.6387830078852021,
+    "diversity_change_pgd_vs_ben_pct": -1.1881199948644339,
+    "diversity_change_rand_vs_ben_pct": -0.23997024299233782
+  },
+  "UNet-B": {
+    "terms": {
+      "ben": {
+        "fid": 136.06170153437483,
+        "mean_term": 50.13357162475586,
+        "cov_term": 85.92812990961897,
+        "tr_sigma_g": 220.07042331851602
+      },
+      "rand": {
+        "fid": 136.64006774441316,
+        "mean_term": 50.404273986816406,
+        "cov_term": 86.23579375759675,
+        "tr_sigma_g": 219.80452559969405
+      },
+      "pgd": {
+        "fid": 118.96201547203691,
+        "mean_term": 37.720367431640625,
+        "cov_term": 81.24164804039629,
+        "tr_sigma_g": 225.57103542229578
+      }
+    },
+    "fid_drop_ben_minus_pgd": 17.099686062337923,
+    "mean_term_share_of_drop": 0.7259317011939377,
+    "diversity_change_pgd_vs_ben_pct": 2.499478131061039,
+    "diversity_change_rand_vs_ben_pct": -0.12082392300265532
+  }
+}

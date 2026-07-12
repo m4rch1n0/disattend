@@ -1,0 +1,42 @@
+{
+  "tolerance": 0.0001,
+  "method": "output reconstruction from collector map + module v/proj",
+  "models": {
+    "SiT-B/2": {
+      "per_layer_max_abs_diff": {
+        "blocks.0.attn": 2.86102294921875e-06,
+        "blocks.1.attn": 3.814697265625e-06,
+        "blocks.2.attn": 4.76837158203125e-06,
+        "blocks.3.attn": 1.1444091796875e-05,
+        "blocks.4.attn": 7.152557373046875e-05,
+        "blocks.5.attn": 7.62939453125e-05,
+        "blocks.6.attn": 1.52587890625e-05,
+        "blocks.7.attn": 6.103515625e-05,
+        "blocks.8.attn": 3.814697265625e-05,
+        "blocks.9.attn": 9.1552734375e-05,
+        "blocks.10.attn": 3.814697265625e-05,
+        "blocks.11.attn": 3.0517578125e-05
+      },
+      "worst": 9.1552734375e-05
+    },
+    "UNet-B": {
+      "per_layer_max_abs_diff": {
+        "input_blocks.4.1": 2.384185791015625e-07,
+        "input_blocks.5.1": 1.1920928955078125e-07,
+        "input_blocks.7.1": 7.450580596923828e-08,
+        "input_blocks.8.1": 7.450580596923828e-08,
+        "middle_block.1": 2.384185791015625e-07,
+        "output_blocks.3.1": 2.980232238769531e-07,
+        "output_blocks.4.1": 2.086162567138672e-07,
+        "output_blocks.5.1": 1.0728836059570312e-06,
+        "output_blocks.6.1": 1.1920928955078125e-06,
+        "output_blocks.7.1": 1.430511474609375e-06,
+        "output_blocks.8.1": 9.5367431640625e-07
+      },
+      "worst": 1.430511474609375e-06
+    }
+  },
+  "git_commit": "6d259be4d334f3d4300ceefc49fc0752edb5c816",
+  "torch": "2.11.0+rocm7.2",
+  "run_utc": "2026-07-12T09:59:42Z"
+}

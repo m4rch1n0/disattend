@@ -25,10 +25,12 @@ experiments/*
 experiments/phase2_pilot/*
 !experiments/phase2_pilot/PREREG.md
 !experiments/phase2_pilot/analysis.json
+!experiments/phase2_pilot/fid_decomp.json
 !experiments/phase3_main/
 experiments/phase3_main/*
 !experiments/phase3_main/PREREG.md
 !experiments/phase3_main/analysis.json
+!experiments/phase3_main/hook_fidelity.json
 
 # Noisy run logs from scripts/notebooks (PNG + summary.json are versioned)
 notebooks/out/*.log
