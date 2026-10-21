@@ -63,3 +63,29 @@ papers
 *~
 .env
 *.pdf
+guides/
+*.pptx
+
+# Paper (versioned): the compiled PDF, its figures, and the small JSON
+# artifacts every number in the paper is traced to (see paper/AUDIT.md)
+!paper/main.pdf
+!paper/figures/*.pdf
+!experiments/phase3_main/detector.json
+!experiments/phase3_main/fid_multispace.json
+!experiments/phase3_main/figures/
+experiments/phase3_main/figures/*
+!experiments/phase3_main/figures/f2_profiles.json
+!experiments/phase3_main/figures/benign_layer_levels.json
+!experiments/energy_probe/
+experiments/energy_probe/*
+!experiments/energy_probe/energy_analysis.json
+!experiments/phase4_heun/
+experiments/phase4_heun/*
+!experiments/phase4_heun/analysis.json
+!experiments/weight_norm_comparison.json
+
+# Paper: working documents and raster duplicates stay local
+paper/PLAN.md
+paper/AUDIT.md
+paper/figures/*.png
+paper/*.bbl

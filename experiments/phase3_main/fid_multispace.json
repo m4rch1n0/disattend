@@ -1,0 +1,177 @@
+{
+  "note": "phase3 z0 substrate (seeds disjoint from pilot), n=500, eps=0.05, VAE decode fp16, features fp32. Small-n FIDs: within-protocol contrasts only. clip=ViT-B/32 openai projected 512d; dinov2=ViT-L/14 lvd142m CLS 1024d, both at 224.",
+  "frozen_reading": "drop vanishes in clip/dinov2 -> ImageNet-alignment artifact; drop persists -> typicality effect across feature spaces",
+  "git_commit": "fce9388763929ab9361b61910240d8a40b2907cf",
+  "limit": null,
+  "ref_n": {
+    "inception": 50000,
+    "clip": 50000,
+    "dinov2": 50000
+  },
+  "results": {
+    "SiT-B-2": {
+      "benign": {
+        "inception": {
+          "fid": 143.7128344051227,
+          "mean_term": 32.24786376953125,
+          "cov_term": 111.46497063559144,
+          "tr_sigma_g": 207.80713682594453
+        },
+        "clip": {
+          "fid": 26.054834920520733,
+          "mean_term": 10.409688949584961,
+          "cov_term": 15.645145970935772,
+          "tr_sigma_g": 35.91243270966127
+        },
+        "dinov2": {
+          "fid": 1793.6633273589623,
+          "mean_term": 360.0414123535156,
+          "cov_term": 1433.6219150054467,
+          "tr_sigma_g": 1552.4802919985007
+        }
+      },
+      "rand": {
+        "inception": {
+          "fid": 143.39052265006137,
+          "mean_term": 32.35743713378906,
+          "cov_term": 111.03308551627231,
+          "tr_sigma_g": 206.63173070267788
+        },
+        "clip": {
+          "fid": 26.33685581229203,
+          "mean_term": 10.597847938537598,
+          "cov_term": 15.739007873754431,
+          "tr_sigma_g": 35.6439468818039
+        },
+        "dinov2": {
+          "fid": 1802.613878689414,
+          "mean_term": 366.98968505859375,
+          "cov_term": 1435.6241936308202,
+          "tr_sigma_g": 1539.683654744727
+        }
+      },
+      "pgd": {
+        "inception": {
+          "fid": 132.32522731816294,
+          "mean_term": 24.08273696899414,
+          "cov_term": 108.2424903491688,
+          "tr_sigma_g": 207.9759750640755
+        },
+        "clip": {
+          "fid": 24.20268980069973,
+          "mean_term": 9.110740661621094,
+          "cov_term": 15.091949139078636,
+          "tr_sigma_g": 38.27844089128706
+        },
+        "dinov2": {
+          "fid": 1710.3760044097608,
+          "mean_term": 304.60101318359375,
+          "cov_term": 1405.774991226167,
+          "tr_sigma_g": 1601.4998142731256
+        }
+      },
+      "contrast": {
+        "inception": {
+          "fid_drop_ben_minus_pgd": 11.387607086959747,
+          "fid_drop_rel": 0.07923862286967623,
+          "mean_term_share_of_drop": 0.7170186623217106,
+          "diversity_change_pgd_vs_ben_pct": 0.08124756479004347
+        },
+        "clip": {
+          "fid_drop_ben_minus_pgd": 1.852145119821003,
+          "fid_drop_rel": 0.07108642697107466,
+          "mean_term_share_of_drop": 0.7013210110066329,
+          "diversity_change_pgd_vs_ben_pct": 6.588270420870934
+        },
+        "dinov2": {
+          "fid_drop_ben_minus_pgd": 83.28732294920155,
+          "fid_drop_rel": 0.04643420071025036,
+          "mean_term_share_of_drop": 0.665652313062529,
+          "diversity_change_pgd_vs_ben_pct": 3.1574972337666374
+        }
+      }
+    },
+    "UNet-B": {
+      "benign": {
+        "inception": {
+          "fid": 176.32967153684268,
+          "mean_term": 52.04884719848633,
+          "cov_term": 124.28082433835635,
+          "tr_sigma_g": 222.48441369272246
+        },
+        "clip": {
+          "fid": 34.807449647701176,
+          "mean_term": 15.984762191772461,
+          "cov_term": 18.822687455928715,
+          "tr_sigma_g": 30.549915867609982
+        },
+        "dinov2": {
+          "fid": 1991.9786138433803,
+          "mean_term": 506.880126953125,
+          "cov_term": 1485.0984868902553,
+          "tr_sigma_g": 1319.624194112409
+        }
+      },
+      "rand": {
+        "inception": {
+          "fid": 175.6820166387992,
+          "mean_term": 51.638023376464844,
+          "cov_term": 124.04399326233437,
+          "tr_sigma_g": 220.8336607367462
+        },
+        "clip": {
+          "fid": 35.086834734920856,
+          "mean_term": 16.115821838378906,
+          "cov_term": 18.97101289654195,
+          "tr_sigma_g": 30.39672196153383
+        },
+        "dinov2": {
+          "fid": 1995.4721730506924,
+          "mean_term": 510.3711242675781,
+          "cov_term": 1485.1010487831143,
+          "tr_sigma_g": 1311.6982047284628
+        }
+      },
+      "pgd": {
+        "inception": {
+          "fid": 162.3578604149085,
+          "mean_term": 40.59980773925781,
+          "cov_term": 121.75805267565067,
+          "tr_sigma_g": 226.28091559535963
+        },
+        "clip": {
+          "fid": 32.913546819106884,
+          "mean_term": 14.570212364196777,
+          "cov_term": 18.343334454910107,
+          "tr_sigma_g": 32.61681537996283
+        },
+        "dinov2": {
+          "fid": 1895.123715494104,
+          "mean_term": 442.3811950683594,
+          "cov_term": 1452.7425204257447,
+          "tr_sigma_g": 1367.4359416000023
+        }
+      },
+      "contrast": {
+        "inception": {
+          "fid_drop_ben_minus_pgd": 13.971811121934195,
+          "fid_drop_rel": 0.07923686921298946,
+          "mean_term_share_of_drop": 0.819438465014374,
+          "diversity_change_pgd_vs_ben_pct": 1.7064125255446427
+        },
+        "clip": {
+          "fid_drop_ben_minus_pgd": 1.8939028285942925,
+          "fid_drop_rel": 0.054410847326166384,
+          "mean_term_share_of_drop": 0.7468967289233112,
+          "diversity_change_pgd_vs_ben_pct": 6.765647150420606
+        },
+        "dinov2": {
+          "fid_drop_ben_minus_pgd": 96.85489834927625,
+          "fid_drop_rel": 0.04862245893413567,
+          "mean_term_share_of_drop": 0.6659336077373271,
+          "diversity_change_pgd_vs_ben_pct": 3.623133593708605
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,42 @@
+[
+  {
+    "step": 1000000,
+    "cosine_wnorm": 722.69,
+    "constant_wnorm": 1430.6
+  },
+  {
+    "step": 2000000,
+    "cosine_wnorm": 644.55,
+    "constant_wnorm": 2229.5
+  },
+  {
+    "step": 3000000,
+    "cosine_wnorm": 418.32,
+    "constant_wnorm": 3164.4
+  },
+  {
+    "step": 4000000,
+    "cosine_wnorm": 321.52,
+    "constant_wnorm": 4097.5
+  },
+  {
+    "step": 5000000,
+    "cosine_wnorm": 282.27,
+    "constant_wnorm": 4950.6
+  },
+  {
+    "step": 6000000,
+    "cosine_wnorm": 268.68,
+    "constant_wnorm": null
+  },
+  {
+    "step": 6200000,
+    "cosine_wnorm": 268.74,
+    "constant_wnorm": null
+  },
+  {
+    "step": 6400000,
+    "cosine_wnorm": 268.74,
+    "constant_wnorm": null
+  }
+]
