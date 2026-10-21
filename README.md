@@ -4,7 +4,10 @@ What happens inside the attention of a diffusion model when you adversarially
 attack its sampling seed, and does the answer depend on the backbone?
 
 Bachelor's thesis in Mathematical Sciences for Artificial Intelligence,
-Sapienza University of Rome.
+Sapienza University of Rome. The thesis is condensed into a short paper:
+[paper/main.pdf](paper/main.pdf) (two columns, 11 pages plus appendices).
+Its LaTeX source and the scripts that regenerate its figures are in
+`paper/`.
 
 ## The experiment
 
@@ -74,7 +77,9 @@ plausible images of the same class while diverging from the benign ones
 disattend/
   src/           models, attacks (pgd_latent), evaluation, attention hooks
   scripts/       training, sampling, attack grids, analyzers, figures
-  experiments/   run outputs (only PREREG.md and analysis.json are versioned)
+  experiments/   run outputs (only the pre-registrations and the small
+                 analysis json files the paper draws on are versioned)
+  paper/         the paper: pdf, latex source, figure scripts
   third_party/   SiT reference implementation
 ```
 
@@ -84,6 +89,20 @@ every figure above is regenerated from the persisted substrate by the
 `make_*` scripts. The UNet baseline comes from a sibling project
 ([`slowflow`](https://github.com/m4rch1n0/slowflow)), retrained here with an
 fp16-safe attention fix to keep the comparison fair.
+
+## Citing
+
+```
+@misc{galletti2026attention,
+  author = {Galletti, Marco},
+  title  = {Attention Fingerprints of Adversarial Perturbations in
+            Flow-Matching Generative Models},
+  year   = {2026},
+  note   = {Bachelor's thesis, Sapienza University of Rome.
+            Supervisor: Iacopo Masi},
+  url    = {https://github.com/m4rch1n0/disattend}
+}
+```
 
 ## Key references
 
