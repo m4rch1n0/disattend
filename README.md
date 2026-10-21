@@ -4,10 +4,8 @@ What happens inside the attention of a diffusion model when you adversarially
 attack its sampling seed, and does the answer depend on the backbone?
 
 Bachelor's thesis in Mathematical Sciences for Artificial Intelligence,
-Sapienza University of Rome. The thesis is condensed into a short paper:
-[paper/main.pdf](paper/main.pdf) (two columns, 11 pages plus appendices).
-Its LaTeX source and the scripts that regenerate its figures are in
-`paper/`.
+Sapienza University of Rome. The paper version is
+[paper/main.pdf](paper/main.pdf); source and figure scripts in `paper/`.
 
 ## The experiment
 
