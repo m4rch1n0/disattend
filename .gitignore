@@ -89,3 +89,13 @@ paper/PLAN.md
 paper/AUDIT.md
 paper/figures/*.png
 paper/*.bbl
+
+# Phase 5 (post-thesis): design notes and small JSON outputs only
+!experiments/phase5_cfg/
+experiments/phase5_cfg/*
+!experiments/phase5_cfg/DESIGN.md
+!experiments/phase5_cfg/analysis.json
+!experiments/phase5_pretrained/
+experiments/phase5_pretrained/*
+!experiments/phase5_pretrained/DESIGN.md
+!experiments/phase5_pretrained/analysis.json
