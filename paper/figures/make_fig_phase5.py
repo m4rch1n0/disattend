@@ -41,7 +41,7 @@ SIZE_C = {"S": "#CC79A7", "B": "#0072B2", "L": "#009E73", "XL": "#E69F00"}
 C_OURS = {"dit": "#0072B2", "unet": "#D55E00"}
 
 plt.rcParams.update({
-    "figure.dpi": 120, "savefig.dpi": 300, "font.size": 9.5,
+    "figure.dpi": 120, "savefig.dpi": 300, "font.size": 10,
     "axes.spines.top": False, "axes.spines.right": False,
     "axes.grid": True, "grid.color": "#E5E5E5", "grid.linewidth": 0.6,
     "axes.axisbelow": True, "axes.edgecolor": "#666666",
@@ -73,7 +73,7 @@ def main() -> int:
     }
     curves = {"profiles": {}, "contrast": {}}
 
-    fig, (ax_a, ax_b) = plt.subplots(1, 2, figsize=(10.5, 3.2),
+    fig, (ax_a, ax_b) = plt.subplots(1, 2, figsize=(8.6, 3.0),
                                      gridspec_kw={"width_ratios": [1.45, 1]})
 
     # (a) profiles on normalized depth
@@ -96,16 +96,13 @@ def main() -> int:
         curves["profiles"][key] = {"layers": layers, "contrast_mean": mu.tolist(),
                                    "ci95_half": ci.tolist()}
     ax_a.axvline(0.5, color="#999999", lw=0.9, ls=(0, (4, 3)))
-    ax_a.text(0.25, 0.97, "input half", transform=ax_a.transAxes, ha="center",
-              va="top", fontsize=8, color="#4d4d4d")
-    ax_a.text(0.75, 0.97, "deep half", transform=ax_a.transAxes, ha="center",
-              va="top", fontsize=8, color="#4d4d4d")
     ax_a.set_xlabel("relative depth (block index / last block)")
     ax_a.set_ylabel("per-block collapse contrast $c$\n(late window, cfg 1 unless noted)")
-    ax_a.set_ylim(bottom=0)
+    ax_a.set_ylim(-0.012, 0.098)
+    ax_a.axhline(0.0, color="#999999", lw=0.8)
     ax_a.grid(axis="x", visible=False)
-    ax_a.legend(fontsize=7.8, frameon=False, loc="upper left",
-                bbox_to_anchor=(0.0, 0.93), ncol=1)
+    ax_a.legend(fontsize=8, frameon=False, loc="upper left",
+                bbox_to_anchor=(0.0, 1.01), ncol=1, handlelength=1.6)
     panel_letter(ax_a, "(a)")
 
     # (b) contrast per model, cfg 1 filled vs cfg 1.5 hollow
@@ -139,7 +136,7 @@ def main() -> int:
     ax_b.text(0.67, 0.97, "official SiT checkpoints", transform=ax_b.transAxes,
               ha="center", va="top", fontsize=8, color="#4d4d4d")
     ax_b.set_xticks(xs)
-    ax_b.set_xticklabels([r[0] for r in rows], fontsize=8)
+    ax_b.set_xticklabels([r[0] for r in rows], fontsize=8.5)
     ax_b.set_ylabel("late collapse contrast $c$")
     ax_b.set_ylim(0, 0.05)
     ax_b.grid(axis="x", visible=False)
